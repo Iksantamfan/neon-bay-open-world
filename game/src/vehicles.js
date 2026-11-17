@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Every car in Neon Bay: the player's ride, traffic that loops the road grid,
 // parked cars to steal, and the NBPD interceptors that chase a wanted player.
 // Arcade physics — no real engine here, just speed, steering and grip that

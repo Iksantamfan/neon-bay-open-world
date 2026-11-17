@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // NEON BAY — every tuning number, colour and story beat in one place.
 // A fictional sun-soaked coastal city. Nothing here is from any commercial game:
 // the city, people, cars, names and story are all our own.

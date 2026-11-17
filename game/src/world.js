@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // The city itself: Neon Bay's streets, buildings, beach, palms, props and the
 // pedestrians who walk its sidewalks. Built once from a seed, so the same seed
 // always builds the same city. No drawing of the HUD here — render.js does that.

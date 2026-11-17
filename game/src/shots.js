@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Staged scenes for the screenshots. Each one puts the real game into a
 // fixed state, steps the sim forward a fixed number of frames from the
 // seeded RNG, and lets main.js paint it twice. No fake scenery: the cover

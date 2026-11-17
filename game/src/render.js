@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Drawing only: the three.js scene, the chase camera, the HUD and the
 // minimap. The game logic never lives here — this module paints what the
 // state already decided, so a screenshot is a frame of the real game.

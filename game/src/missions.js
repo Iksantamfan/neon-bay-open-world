@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // The story: six linked missions for Mara Voss and her crew, each a chain of
 // objectives — meet, drive, steal, deliver, evade, fight. The module owns the
 // mission state, the objective marker and the rival crew it spawns.

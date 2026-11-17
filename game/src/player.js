@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Mara Voss on foot: third-person walking, running and jumping, with a
 // pistol for the moments that need one. The mesh is a simple stylised figure
 // — jacket, jeans, swinging legs — that reads at a glance in a chase camera.

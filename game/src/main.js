@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // NEON BAY — boot and the one loop. Input is read every frame, the world
 // advances in fixed 1/60 s steps, and the renderer paints what is there.
 // Modes: title, play, paused, busted, complete. ?shot=cover|start|play|end
@@ -544,6 +545,13 @@ let lastNow = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   if (G.mode === SCREEN_PAUSED) {
+    // Resume from pause: step() never runs while paused, so the paused
+    // branch inside step() is unreachable — read the one-shot presses here.
+    const actions = input.takeActions();
+    if (actions & ACTION_PAUSE || actions & ACTION_CONFIRM) {
+      G.mode = SCREEN_PLAY;
+      renderer.showScreen(SCREEN_PLAY);
+    }
     renderer.render();
     return;
   }

@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Every sound is synthesized with WebAudio — no audio files, no network.
 // Engine hum, police sirens, gunshots, cash chimes, mission stings and a
 // slow sunset pad. Created on the first user gesture; M mutes everything.

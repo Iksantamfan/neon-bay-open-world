@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // Keyboard and mouse for a third-person open world. Held keys steer and drive;
 // one-shot presses (start, pause, enter a car, mute) are queued as bit flags
 // and taken once by the loop, so a press between two frames is never lost.

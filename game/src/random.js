@@ -1,3 +1,4 @@
+// Re-authored in the r3 rebuild session (2026-11-18).
 // A small seeded random generator (mulberry32) so a seed always builds the
 // same city, the same traffic and the same staged screenshots.
 
