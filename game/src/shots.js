@@ -1,79 +1,115 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// Staged scenes for the screenshots. Each one puts the real game into a
+// fixed state, steps the sim forward a fixed number of frames from the
+// seeded RNG, and lets main.js paint it twice. No fake scenery: the cover
+// is the real chase, the title is the real title screen over the real city.
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
-/**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
- */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
+import { SCREEN_TITLE } from './render.js';
 
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
-    }
-  }
-  return Infinity;
+function setCam(renderer, yaw, pitch, dist, target) {
+  renderer.cam.yaw = yaw;
+  renderer.cam.pitch = pitch;
+  renderer.cam.dist = dist;
+  renderer.cam.tx = target.x;
+  renderer.cam.ty = target.y + 2;
+  renderer.cam.tz = target.z;
+  renderer.updateCamera(1, { x: target.x, y: target.y + 2, z: target.z }, yaw, false);
 }
 
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
+function stepSim(G, world, vehicles, missions, n, chaseX, chaseZ) {
+  for (let i = 0; i < n; i += 1) {
+    G.time += 1 / 60;
+    vehicles.updateTraffic(1 / 60);
+    world.update(1 / 60, G.time);
+    vehicles.updatePolice(1 / 60, chaseX || 0, chaseZ || 0, false, () => {});
   }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
-    }
-  }
-  return best;
 }
 
-/**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
- */
-export function stageShot(name, world) {
-  world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
+export function stageShot(name, ctx) {
+  const { world, vehicles, player, missions, renderer, G } = ctx;
+  const p = player.state;
+  G.mode = 'play';
+  G.feed = [];
+  G.wanted = 0;
+  G.time = 120; // late afternoon, long shadows
+
+  if (name === 'start') {
+    // the title screen over the sunset city
+    setCam(renderer, 0.9, 0.42, 110, { x: 0, y: 8, z: 60 });
+    stepSim(G, world, vehicles, missions, 90);
+    return SCREEN_TITLE;
   }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
+
+  if (name === 'play') {
+    // Mara on foot on the pier road, traffic and pedestrians around her
+    p.x = -35; p.z = 150; p.y = 0; p.vy = 0; p.yaw = Math.PI;
+    p.mesh.position.set(p.x, 0, p.z);
+    p.mesh.rotation.y = p.yaw;
+    G.cash = 250;
+    missions.startMission(0);
+    G.feed = [
+      'Lena: "Comet GT. Gold. Worth a fortune."',
+      'Mara: "Then we take it before Strand does."',
+    ];
+    stepSim(G, world, vehicles, missions, 120);
+    setCam(renderer, Math.PI + 0.25, 0.3, 10, { x: p.x, y: 1.6, z: p.z });
+    return 'play';
   }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
+
+  if (name === 'cover') {
+    // the chase: Mara in the gold Comet GT, 3 stars, two interceptors behind
+    const comet = vehicles.cars.find((c) => c.tag === 'comet');
+    comet.kind = 'player';
+    comet.x = 35; comet.z = 140; comet.yaw = Math.PI; comet.speed = 16;
+    comet.group.position.set(comet.x, 0, comet.z);
+    comet.group.rotation.y = comet.yaw;
+    p.car = comet;
+    p.mesh.visible = false;
+    p.x = comet.x; p.z = comet.z;
+    G.wanted = 3;
+    G.cash = 1250;
+    missions.startMission(3);
+    G.feed = [
+      'Lena: "Three stars! Lose them before the docks."',
+      'Vic Strand: "You cannot outrun the city, Voss."',
+    ];
+    vehicles.spawnPoliceNear(comet.x - 5, comet.z + 8);
+    vehicles.spawnPoliceNear(comet.x + 5, comet.z + 12);
+    stepSim(G, world, vehicles, missions, 90, comet.x, comet.z);
+    // frame the chase: the interceptors pull up on either side of the Comet,
+    // light bars on, right where the camera can see them
+    const cops = vehicles.police;
+    const flanks = [[-6, 3], [5, 5]];
+    for (let i = 0; i < cops.length && i < flanks.length; i += 1) {
+      cops[i].x = comet.x + flanks[i][0];
+      cops[i].z = comet.z + flanks[i][1];
+      cops[i].yaw = Math.PI;
+      cops[i].speed = 0;
+      cops[i].group.position.set(cops[i].x, 0, cops[i].z);
+      cops[i].group.rotation.y = Math.PI;
+    }
+    setCam(renderer, Math.PI + 0.15, 0.28, 13, { x: comet.x, y: 1.5, z: comet.z });
+    return 'play';
+  }
+
+  if (name === 'end') {
+    // the tower plaza at dusk, the crew's job done, the city hers — Mara in
+    // the south-east corner of the plaza, the tower rising behind her
+    p.x = 18; p.z = 32; p.y = 0; p.vy = 0; p.yaw = Math.PI * 0.25;
+    p.mesh.position.set(p.x, 0, p.z);
+    p.mesh.rotation.y = p.yaw;
+    G.cash = 6750;
+    G.wanted = 0;
+    missions.state.index = 6;
+    missions.state.done = true;
+    G.feed = [
+      'Dario: "Six jobs. Zero arrests. The Bay is ours."',
+      'Mara: "Neon Bay never stood a chance."',
+    ];
+    stepSim(G, world, vehicles, missions, 90);
+    setCam(renderer, Math.PI * 1.25, 0.28, 15, { x: 18, y: 1.5, z: 32 });
+    renderer.banner('NEON REIGN', 'All six missions done — Neon Bay is yours.');
+    return 'play';
+  }
+
+  return SCREEN_TITLE;
 }

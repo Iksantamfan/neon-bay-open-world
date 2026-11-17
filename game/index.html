@@ -3,17 +3,110 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>NEON BAY — a sun-soaked open-world crime story</title>
+<link rel="icon" href="data:,">
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f2e; font-family: 'Helvetica Neue', Arial, sans-serif; color: #ffe8c9; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  .panel { background: rgba(16, 10, 32, 0.62); border: 1px solid rgba(255, 217, 77, 0.35); border-radius: 12px; backdrop-filter: blur(2px); }
+  #topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; }
+  #cash { font-size: 30px; font-weight: 900; color: #ffd94d; letter-spacing: 1px; line-height: 1; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+  #health { width: 180px; height: 10px; background: rgba(255,255,255,0.18); border-radius: 6px; margin-top: 8px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: #5fd97a; border-radius: 6px; transition: width 0.2s; }
+  #stars { font-size: 24px; color: #ffd94d; letter-spacing: 3px; margin-top: 6px; text-shadow: 0 0 10px rgba(255, 217, 77, 0.7); }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 10px 20px; font-size: 17px; font-weight: 700; color: #fff; max-width: 46vw; text-align: center; }
+  #objective b { color: #ffd94d; }
+  #minimap { position: absolute; top: 14px; right: 14px; width: 200px; height: 200px; border: 2px solid rgba(255, 217, 77, 0.5); border-radius: 10px; background: #20242e; }
+  #speed { position: absolute; bottom: 18px; left: 16px; font-size: 22px; font-weight: 800; color: #35e0e6; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
+  #prompt { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 15px; color: #ffe8c9; background: rgba(16,10,32,0.55); padding: 7px 14px; border-radius: 20px; }
+  #feed { position: absolute; bottom: 18px; right: 16px; width: 340px; text-align: right; font-size: 15px; line-height: 1.5; }
+  #feed div { background: rgba(16, 10, 32, 0.6); border-radius: 8px; padding: 5px 10px; margin-top: 6px; display: inline-block; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.45); }
+  #arrow { position: absolute; display: none; font-size: 26px; color: #ffd94d; text-shadow: 0 0 12px rgba(255, 217, 77, 0.9); }
+  #arrow-label { position: absolute; transform: translate(-50%, 0); font-size: 12px; font-weight: 700; color: #ffd94d; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+  #banner { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -16px); text-align: center; opacity: 0; transition: opacity 0.35s, transform 0.35s; }
+  #banner.show { opacity: 1; transform: translate(-50%, 0); }
+  #banner-text { font-size: 54px; font-weight: 900; letter-spacing: 4px; color: #ffd94d; text-shadow: 0 0 24px rgba(255, 94, 138, 0.8), 0 3px 0 rgba(0,0,0,0.4); }
+  #banner-sub { font-size: 20px; font-weight: 700; color: #fff; margin-top: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+  #saved { position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #5fd97a; opacity: 0; transition: opacity 0.3s; }
+  #saved.show { opacity: 1; }
+
+  /* ---------- full screens ---------- */
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; background: linear-gradient(180deg, rgba(26, 15, 46, 0.25) 0%, rgba(26, 15, 46, 0.78) 78%); }
+  .screen h1 { font-size: 84px; font-weight: 900; letter-spacing: 8px; margin: 0; color: #ffd94d; text-shadow: 0 0 30px rgba(255, 94, 138, 0.9), 0 4px 0 rgba(0,0,0,0.5); }
+  .screen h2 { font-size: 44px; font-weight: 900; letter-spacing: 6px; margin: 0; color: #ff5e8a; text-shadow: 0 0 24px rgba(255, 94, 138, 0.8); }
+  .screen p { font-size: 19px; line-height: 1.6; max-width: 640px; margin: 14px 20px; color: #ffe8c9; }
+  .screen .tag { font-size: 15px; letter-spacing: 4px; font-weight: 700; color: #35e0e6; text-transform: uppercase; }
+  .screen .cta { margin-top: 22px; font-size: 21px; font-weight: 800; color: #fff; background: #ff5e8a; padding: 14px 30px; border-radius: 40px; box-shadow: 0 6px 24px rgba(255, 94, 138, 0.55); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .controls { display: flex; gap: 18px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  .controls div { font-size: 14px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 8px 12px; }
+  .controls b { color: #ffd94d; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="NEON BAY: an open-world crime story. Drive, steal cars, outrun the police and finish six missions."></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud">
+  <div id="topleft" class="panel">
+    <div id="cash">$250</div>
+    <div id="health"><div id="health-fill"></div></div>
+    <div id="stars">☆☆☆☆☆</div>
+  </div>
+  <div id="objective" class="panel">Meet Lena at the pier.</div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div id="speed"></div>
+  <div id="prompt"></div>
+  <div id="feed"></div>
+  <div id="crosshair"></div>
+  <div id="arrow">▲</div>
+  <div id="arrow-label"></div>
+  <div id="banner"><div id="banner-text"></div><div id="banner-sub"></div></div>
+  <div id="saved">SAVED ✓</div>
+</div>
+
+<div id="title-screen" class="screen">
+  <div class="tag">A sun-soaked open-world crime story</div>
+  <h1>NEON BAY</h1>
+  <p>Mara Voss came home to take her city back. Six jobs, one crew, and the whole
+  Neon Bay Police Department in the way. Steal the gold Comet GT, lose the heat,
+  and put Vic Strand's name on the wall — then take the tower.</p>
+  <div class="controls">
+    <div><b>WASD</b> move / drive</div>
+    <div><b>E</b> take / leave a car</div>
+    <div><b>Click</b> shoot</div>
+    <div><b>Shift</b> run</div>
+    <div><b>Mouse</b> look · <b>wheel</b> zoom</div>
+    <div><b>P</b> pause · <b>M</b> mute</div>
+  </div>
+  <div class="cta">CLICK OR PRESS SPACE TO PLAY</div>
+</div>
+
+<div id="pause-screen" class="screen">
+  <h2>PAUSED</h2>
+  <p>Neon Bay waits for no one — except right now.</p>
+  <div class="cta">PRESS P OR CLICK TO RESUME</div>
+</div>
+
+<div id="busted-screen" class="screen">
+  <h2>BUSTED</h2>
+  <p id="busted-text"></p>
+  <div class="cta">CLICK TO GET BACK UP</div>
+</div>
+
+<div id="complete-screen" class="screen">
+  <h2>NEON REIGN</h2>
+  <p id="final-stats"></p>
+  <p>The tower is yours. The bay is yours. Mara Voss runs Neon Bay now.</p>
+  <div class="cta">CLICK TO KEEP ROAMING</div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
