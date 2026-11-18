@@ -1,58 +1,30 @@
 // NEON BAY — entrypoint for make.fun gta6-01.
 // Copies game/ and screenshots/ into the output directory, then writes
 // dossier.json with buildDossier from the kit's vendor/makefun-game.ts.
+// Plain JavaScript only (no TypeScript syntax) so it runs on any Node 22.
 // Runs on Node 22+ with no install step; deterministic: two runs write
 // the same bytes.
 
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { buildDossier } from "./vendor/makefun-game.ts";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildDossier } from './vendor/makefun-game.ts';
 
-const repoRoot = dirname(fileURLToPath(import.meta.url));
-const outDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
-const TEXT_MAX_BYTES = 163840;
+const here = fileURLToPath(new URL('.', import.meta.url));
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-function copyTree(src: string, dest: string): void {
-  if (!existsSync(src)) {
-    throw new Error("missing input directory: " + src);
-  }
-  mkdirSync(dest, { recursive: true });
-  cpSync(src, dest, { recursive: true });
-}
+mkdirSync(out, { recursive: true });
+cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
+mkdirSync(join(out, 'screenshots'), { recursive: true });
+if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
 
-function main(): void {
-  // Start from a clean output directory so a stale run never leaks in.
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir, { recursive: true });
+const dossier = buildDossier(out, {
+  text_max_bytes: 163840,
+  screenshots: { max: 4, max_bytes: 262144 },
+  game_max_files: 993,
+  game_max_bytes: 50331648,
+  game_path_max_bytes: 1000,
+});
+writeFileSync(join(out, 'dossier.json'), dossier);
 
-  const gameSrc = join(repoRoot, "game");
-  const shotsSrc = join(repoRoot, "screenshots");
-  copyTree(gameSrc, join(outDir, "game"));
-  copyTree(shotsSrc, join(outDir, "screenshots"));
-
-  const dossier = buildDossier(outDir, { text_max_bytes: TEXT_MAX_BYTES });
-  const dossierPath = join(outDir, "dossier.json");
-  writeFileSync(dossierPath, dossier);
-
-  const gameFiles = countFiles(join(outDir, "game"));
-  const shotFiles = countFiles(join(outDir, "screenshots"));
-  console.log(
-    "NEON BAY: wrote " + outDir + " — game/ " + gameFiles + " files, " +
-    "screenshots/ " + shotFiles + " files, dossier.json " + dossier.length + " bytes"
-  );
-}
-
-function countFiles(dir: string): number {
-  // Small recursive count; the tree is shallow and tiny.
-  let n = 0;
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    const st = statSync(p);
-    if (st.isDirectory()) n += countFiles(p);
-    else n += 1;
-  }
-  return n;
-}
-
-main();
+console.log('NEON BAY: wrote ' + out + ' — game/ + screenshots/ copied, dossier.json ' + dossier.length + ' bytes');
