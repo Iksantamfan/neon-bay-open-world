@@ -1,43 +1,58 @@
-// NEON BAY — a gta6-01 entry (Node 22, standard library only): a fictional
-// sun-soaked coastal open-world crime game in this directory's game/ folder,
-// plain static files a desktop browser loads offline (game/index.html and its
-// ES modules, three.js vendored under game/vendor/, no network request), and
-// the program hands it in. It copies game/ and screenshots/ from beside this
-// file to /output and writes /output/dossier.json, the summary the judge
-// reads, with the vendored make.fun library. Mara Voss, six linked story
-// missions, arcade driving with traffic AI, a 1–5 star wanted level with
-// police chases, pistol combat, a HUD with minimap, and WebAudio synth sound.
-// Screenshots: the first by name is the cover — the gold Comet GT chase at
-// three stars — then the title screen, on-foot play, and the tower finale.
-//
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// NEON BAY — entrypoint for make.fun gta6-01.
+// Copies game/ and screenshots/ into the output directory, then writes
+// dossier.json with buildDossier from the kit's vendor/makefun-game.ts.
+// Runs on Node 22+ with no install step; deterministic: two runs write
+// the same bytes.
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { buildDossier } from './vendor/makefun-game.ts';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { buildDossier } from "./vendor/makefun-game.ts";
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const repoRoot = dirname(fileURLToPath(import.meta.url));
+const outDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
+const TEXT_MAX_BYTES = 163840;
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+function copyTree(src: string, dest: string): void {
+  if (!existsSync(src)) {
+    throw new Error("missing input directory: " + src);
+  }
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true });
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of game
-// files, in all, or a path under game/ over 1000 bytes: game/ counts beside /output's own 1000-entry cap, its
-// screenshots/ and dossier.json).
-writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, {
-    text_max_bytes: 163840,
-    screenshots: { max: 4, max_bytes: 262144 },
-    game_max_files: 993,
-    game_max_bytes: 50331648,
-    game_path_max_bytes: 1000,
-  }),
-);
+function main(): void {
+  // Start from a clean output directory so a stale run never leaks in.
+  rmSync(outDir, { recursive: true, force: true });
+  mkdirSync(outDir, { recursive: true });
+
+  const gameSrc = join(repoRoot, "game");
+  const shotsSrc = join(repoRoot, "screenshots");
+  copyTree(gameSrc, join(outDir, "game"));
+  copyTree(shotsSrc, join(outDir, "screenshots"));
+
+  const dossier = buildDossier(outDir, { text_max_bytes: TEXT_MAX_BYTES });
+  const dossierPath = join(outDir, "dossier.json");
+  writeFileSync(dossierPath, dossier);
+
+  const gameFiles = countFiles(join(outDir, "game"));
+  const shotFiles = countFiles(join(outDir, "screenshots"));
+  console.log(
+    "NEON BAY: wrote " + outDir + " — game/ " + gameFiles + " files, " +
+    "screenshots/ " + shotFiles + " files, dossier.json " + dossier.length + " bytes"
+  );
+}
+
+function countFiles(dir: string): number {
+  // Small recursive count; the tree is shallow and tiny.
+  let n = 0;
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) n += countFiles(p);
+    else n += 1;
+  }
+  return n;
+}
+
+main();

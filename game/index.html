@@ -1,113 +1,129 @@
-<!doctype html>
-<!-- Re-authored in the r3 rebuild session (2026-11-18). -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NEON BAY — a sun-soaked open-world crime story</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23101018'/%3E%3Ctext x='16' y='23' font-size='20' font-family='Arial' font-weight='bold' text-anchor='middle' fill='%2337e6ff'%3EN%3C/text%3E%3C/svg%3E">
+<title>NEON BAY — an open-world crime game</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f2e; font-family: 'Helvetica Neue', Arial, sans-serif; color: #ffe8c9; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
-  /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
-  .panel { background: rgba(16, 10, 32, 0.62); border: 1px solid rgba(255, 217, 77, 0.35); border-radius: 12px; backdrop-filter: blur(2px); }
-  #topleft { position: absolute; top: 14px; left: 14px; padding: 10px 14px; }
-  #cash { font-size: 30px; font-weight: 900; color: #ffd94d; letter-spacing: 1px; line-height: 1; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
-  #health { width: 180px; height: 10px; background: rgba(255,255,255,0.18); border-radius: 6px; margin-top: 8px; overflow: hidden; }
-  #health-fill { height: 100%; width: 100%; background: #5fd97a; border-radius: 6px; transition: width 0.2s; }
-  #stars { font-size: 24px; color: #ffd94d; letter-spacing: 3px; margin-top: 6px; text-shadow: 0 0 10px rgba(255, 217, 77, 0.7); }
-  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 10px 20px; font-size: 17px; font-weight: 700; color: #fff; max-width: 46vw; text-align: center; }
-  #objective b { color: #ffd94d; }
-  #minimap { position: absolute; top: 14px; right: 14px; width: 200px; height: 200px; border: 2px solid rgba(255, 217, 77, 0.5); border-radius: 10px; background: #20242e; }
-  #speed { position: absolute; bottom: 18px; left: 16px; font-size: 22px; font-weight: 800; color: #35e0e6; text-shadow: 0 2px 6px rgba(0,0,0,0.7); }
-  #prompt { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 15px; color: #ffe8c9; background: rgba(16,10,32,0.55); padding: 7px 14px; border-radius: 20px; }
-  #feed { position: absolute; bottom: 18px; right: 16px; width: 340px; text-align: right; font-size: 15px; line-height: 1.5; }
-  #feed div { background: rgba(16, 10, 32, 0.6); border-radius: 8px; padding: 5px 10px; margin-top: 6px; display: inline-block; }
-  #crosshair { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.45); }
-  #arrow { position: absolute; display: none; font-size: 26px; color: #ffd94d; text-shadow: 0 0 12px rgba(255, 217, 77, 0.9); }
-  #arrow-label { position: absolute; transform: translate(-50%, 0); font-size: 12px; font-weight: 700; color: #ffd94d; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
-  #banner { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -16px); text-align: center; opacity: 0; transition: opacity 0.35s, transform 0.35s; }
-  #banner.show { opacity: 1; transform: translate(-50%, 0); }
-  #banner-text { font-size: 54px; font-weight: 900; letter-spacing: 4px; color: #ffd94d; text-shadow: 0 0 24px rgba(255, 94, 138, 0.8), 0 3px 0 rgba(0,0,0,0.4); }
-  #banner-sub { font-size: 20px; font-weight: 700; color: #fff; margin-top: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
-  #saved { position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 700; color: #5fd97a; opacity: 0; transition: opacity 0.3s; }
-  #saved.show { opacity: 1; }
-
-  /* ---------- full screens ---------- */
-  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; background: linear-gradient(180deg, rgba(26, 15, 46, 0.25) 0%, rgba(26, 15, 46, 0.78) 78%); }
-  .screen h1 { font-size: 84px; font-weight: 900; letter-spacing: 8px; margin: 0; color: #ffd94d; text-shadow: 0 0 30px rgba(255, 94, 138, 0.9), 0 4px 0 rgba(0,0,0,0.5); }
-  .screen h2 { font-size: 44px; font-weight: 900; letter-spacing: 6px; margin: 0; color: #ff5e8a; text-shadow: 0 0 24px rgba(255, 94, 138, 0.8); }
-  .screen p { font-size: 19px; line-height: 1.6; max-width: 640px; margin: 14px 20px; color: #ffe8c9; }
-  .screen .tag { font-size: 15px; letter-spacing: 4px; font-weight: 700; color: #35e0e6; text-transform: uppercase; }
-  .screen .cta { margin-top: 22px; font-size: 21px; font-weight: 800; color: #fff; background: #ff5e8a; padding: 14px 30px; border-radius: 40px; box-shadow: 0 6px 24px rgba(255, 94, 138, 0.55); animation: pulse 1.6s infinite; }
-  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-  .controls { display: flex; gap: 18px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
-  .controls div { font-size: 14px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 8px 12px; }
-  .controls b { color: #ffd94d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #101018; font-family: "Segoe UI", Arial, sans-serif; color: #f2f2f7; }
+  #game-container { position: fixed; inset: 0; }
+  #game-container canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .panel { background: rgba(10, 10, 22, 0.62); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px; backdrop-filter: blur(3px); }
+  #top-left { position: absolute; top: 14px; left: 14px; padding: 10px 14px; min-width: 240px; }
+  #health-row { display: flex; align-items: center; gap: 8px; }
+  #health-bar { flex: 1; height: 12px; background: rgba(255,255,255,0.15); border-radius: 6px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: #3fae5a; border-radius: 6px; transition: width 0.15s; }
+  #health-num { font-weight: 700; font-size: 13px; min-width: 28px; text-align: right; }
+  #money { font-size: 22px; font-weight: 800; color: #7dff8a; margin-top: 4px; letter-spacing: 0.5px; }
+  #stars { font-size: 20px; letter-spacing: 3px; color: #ffd23b; margin-top: 2px; text-shadow: 0 0 8px rgba(255,210,59,0.6); }
+  #minimap { position: absolute; top: 14px; right: 14px; width: 180px; height: 180px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: #101018; }
+  #objective-box { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 10px 18px; text-align: center; max-width: 640px; }
+  #mission-title { font-size: 13px; font-weight: 800; letter-spacing: 2px; color: #37e6ff; text-transform: uppercase; }
+  #objective-text { font-size: 16px; font-weight: 600; margin-top: 2px; }
+  #prompt { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); font-size: 15px; font-weight: 700; background: rgba(10,10,22,0.7); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); opacity: 0; transition: opacity 0.15s; }
+  #subtitle { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); max-width: 720px; text-align: center; font-size: 17px; font-style: italic; color: #ffe9a8; text-shadow: 0 2px 6px #000; opacity: 0; transition: opacity 0.3s; }
+  #message { position: absolute; left: 50%; top: 26%; transform: translateX(-50%); font-size: 30px; font-weight: 900; letter-spacing: 2px; color: #ffd23b; text-shadow: 0 3px 14px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.25s; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.85); box-shadow: 0 0 6px #000; }
+  #damage-flash { position: fixed; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(255,0,0,0.55) 100%); opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 6; }
+  #controls-hint { position: absolute; left: 14px; bottom: 14px; font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.6; padding: 8px 12px; }
+  #btn-mute { position: absolute; right: 14px; bottom: 14px; pointer-events: auto; background: rgba(10,10,22,0.7); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; text-align: center; background: rgba(8, 8, 18, 0.72); z-index: 10; pointer-events: auto; padding: 20px; }
+  .screen h1 { font-size: 64px; font-weight: 900; letter-spacing: 6px; color: #37e6ff; text-shadow: 0 0 24px rgba(55,230,255,0.55), 0 4px 0 rgba(0,0,0,0.6); }
+  .screen h1 .pink { color: #ff2fb3; text-shadow: 0 0 24px rgba(255,47,179,0.55), 0 4px 0 rgba(0,0,0,0.6); }
+  .screen h2 { font-size: 30px; font-weight: 900; letter-spacing: 2px; margin-bottom: 10px; }
+  .screen p { font-size: 17px; line-height: 1.65; color: #d8d8e8; max-width: 620px; margin: 8px 0; }
+  .screen .gold { color: #ffd23b; font-weight: 800; }
+  .screen .btn { pointer-events: auto; margin-top: 18px; font-size: 19px; font-weight: 800; letter-spacing: 1px; color: #101018; background: #ffd23b; border: none; border-radius: 10px; padding: 13px 34px; cursor: pointer; box-shadow: 0 4px 0 #a8840f; }
+  .screen .btn:active { transform: translateY(3px); box-shadow: none; }
+  .screen .btn.secondary { background: #37e6ff; box-shadow: 0 4px 0 #1a7a8a; }
+  .screen .keys { font-size: 14px; color: #bdbdd0; line-height: 2; margin-top: 12px; }
+  .screen .keys b { color: #fff; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 5px; padding: 2px 8px; font-family: inherit; }
+  #screen-start { display: flex; background: linear-gradient(180deg, rgba(8,8,18,0.55) 0%, rgba(8,8,18,0.82) 100%); }
+  #selftest { display: none; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="NEON BAY: an open-world crime story. Drive, steal cars, outrun the police and finish six missions."></canvas>
-<p id="status" role="status" aria-live="polite"></p>
+<div id="game-container"></div>
 
 <div id="hud">
-  <div id="topleft" class="panel">
-    <div id="cash">$250</div>
-    <div id="health"><div id="health-fill"></div></div>
+  <div id="top-left" class="panel">
+    <div id="health-row"><span style="font-size:12px;font-weight:800;letter-spacing:1px;">HEALTH</span><div id="health-bar"><div id="health-fill"></div></div><span id="health-num">100</span></div>
+    <div id="money">$500</div>
     <div id="stars">☆☆☆☆☆</div>
   </div>
-  <div id="objective" class="panel">Meet Lena at the pier.</div>
-  <canvas id="minimap" width="200" height="200"></canvas>
-  <div id="speed"></div>
-  <div id="prompt"></div>
-  <div id="feed"></div>
-  <div id="crosshair"></div>
-  <div id="arrow">▲</div>
-  <div id="arrow-label"></div>
-  <div id="banner"><div id="banner-text"></div><div id="banner-sub"></div></div>
-  <div id="saved">SAVED ✓</div>
-</div>
-
-<div id="title-screen" class="screen">
-  <div class="tag">A sun-soaked open-world crime story</div>
-  <h1>NEON BAY</h1>
-  <p>Mara Voss came home to take her city back. Six jobs, one crew, and the whole
-  Neon Bay Police Department in the way. Steal the gold Comet GT, lose the heat,
-  and put Vic Strand's name on the wall — then take the tower.</p>
-  <div class="controls">
-    <div><b>WASD</b> move / drive</div>
-    <div><b>E</b> take / leave a car</div>
-    <div><b>Click</b> shoot</div>
-    <div><b>Shift</b> run</div>
-    <div><b>Mouse</b> look · <b>wheel</b> zoom</div>
-    <div><b>P</b> pause · <b>M</b> mute</div>
+  <canvas id="minimap" width="180" height="180"></canvas>
+  <div id="objective-box" class="panel">
+    <div id="mission-title">NEON BAY</div>
+    <div id="objective-text">Press Play to start</div>
   </div>
-  <div class="cta">CLICK OR PRESS SPACE TO PLAY</div>
+  <div id="prompt"></div>
+  <div id="subtitle"></div>
+  <div id="message"></div>
+  <div id="crosshair"></div>
+  <div id="controls-hint" class="panel">WASD move / drive &nbsp;•&nbsp; Mouse look &nbsp;•&nbsp; Shift run<br>E enter car &nbsp;•&nbsp; F punch / shoot &nbsp;•&nbsp; Space handbrake<br>Esc pause &nbsp;•&nbsp; M mute &nbsp;•&nbsp; Enter next mission</div>
+  <button id="btn-mute">Mute (M)</button>
+</div>
+<div id="damage-flash"></div>
+
+<div id="screen-start" class="screen">
+  <h1>NEON <span class="pink">BAY</span></h1>
+  <p>An open-world crime story in a neon coastal city. Play as <b>Mara Voss</b>, back in town with her crew — <b>Dario</b>, <b>Pip</b> and <b>Lena</b> — and take the city back from rival <b>Vic Strand</b>, one job at a time.</p>
+  <p><span class="gold">6 story missions</span> • drive and steal cars • traffic &amp; pedestrians • wanted level with police chases • combat • minimap • synth sound</p>
+  <button class="btn" id="btn-play">▶ &nbsp;PLAY</button>
+  <div class="keys">
+    <b>W A S D</b> move / drive &nbsp; <b>Mouse</b> look &nbsp; <b>Shift</b> run &nbsp; <b>E</b> enter car<br>
+    <b>F</b> punch / shoot &nbsp; <b>Space</b> handbrake &nbsp; <b>Esc</b> pause &nbsp; <b>M</b> mute &nbsp; <b>Enter</b> next mission
+  </div>
 </div>
 
-<div id="pause-screen" class="screen">
+<div id="screen-pause" class="screen">
   <h2>PAUSED</h2>
   <p>Neon Bay waits for no one — except right now.</p>
-  <div class="cta">PRESS P OR CLICK TO RESUME</div>
+  <button class="btn" id="btn-resume">RESUME</button>
 </div>
 
-<div id="busted-screen" class="screen">
-  <h2>BUSTED</h2>
-  <p id="busted-text"></p>
-  <div class="cta">CLICK TO GET BACK UP</div>
+<div id="screen-complete" class="screen">
+  <h2 id="complete-title">MISSION COMPLETE</h2>
+  <p id="complete-reward" class="gold"></p>
+  <button class="btn" id="btn-next">NEXT MISSION ▸</button>
 </div>
 
-<div id="complete-screen" class="screen">
-  <h2>NEON REIGN</h2>
-  <p id="final-stats"></p>
-  <p>The tower is yours. The bay is yours. Mara Voss runs Neon Bay now.</p>
-  <div class="cta">CLICK TO KEEP ROAMING</div>
+<div id="screen-failed" class="screen">
+  <h2 style="color:#ff5a4d;">MISSION FAILED</h2>
+  <p id="failed-reason"></p>
+  <button class="btn" id="btn-retry">RETRY MISSION</button>
 </div>
 
-<script src="./vendor/three.min.js"></script>
-<script type="module" src="./src/main.js"></script>
+<div id="screen-over" class="screen">
+  <h2 style="color:#ff5a4d;">GAME OVER</h2>
+  <p id="over-reason"></p>
+  <button class="btn" id="btn-respawn">RESPAWN — $100</button>
+</div>
+
+<div id="screen-finale" class="screen">
+  <h1 style="font-size:44px;">NEON BAY IS <span class="pink">YOURS</span></h1>
+  <p>Vic Strand is finished. The crew is together. The city lights spell your name tonight, Mara.</p>
+  <p id="finale-stats" class="gold"></p>
+  <button class="btn secondary" id="btn-again">KEEP EXPLORING</button>
+</div>
+
+<div id="selftest"></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/config.js"></script>
+<script src="src/utils.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/input.js"></script>
+<script src="src/world.js"></script>
+<script src="src/player.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/pedestrians.js"></script>
+<script src="src/enemies.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>
